@@ -1,0 +1,1 @@
+fastapi dev C:\Users\thoma\Downloads\FastAPI\FastAPIDunossauro\fast_zero\fast_zero\app.py
