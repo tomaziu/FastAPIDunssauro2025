@@ -28,23 +28,21 @@ def test_create_user(client):
     }
 
 
-def test_read_users(client):
-    response = client.get('/users')
-    assert response.status_code == HTTPStatus.OK
-    assert response.json() == {'users': []}
-
-
-def test_read_users_with_users(client, user):
+def test_read_users_with_users(client, user, token):
     user_schema = UserPublic.model_validate(user).model_dump()
-    response = client.get('/users/')
+    response = client.get(
+        '/users/',
+        headers={'Authorization': f'Bearer {token}'},
+    )
 
     assert response.status_code == HTTPStatus.OK
     assert response.json() == {'users': [user_schema]}
 
 
-def test_update_user(client, user):
+def test_update_user(client, user, token):
     response = client.put(
         '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'bob',
             'email': 'bob@example.com',
@@ -60,7 +58,7 @@ def test_update_user(client, user):
     }
 
 
-def test_update_integrity_error(client, user):
+def test_update_integrity_error(client, user, token):
     client.post(
         '/users',
         json={
@@ -73,6 +71,7 @@ def test_update_integrity_error(client, user):
     # Alterando o user das fixture para fausto
     response_update = client.put(
         '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'alice',
             'email': 'fausto@example.com',
@@ -95,14 +94,26 @@ def test_get_user(client, user):
     }
 
 
-def test_delete_user(client, user):
-    response = client.delete('/users/1')
+def test_delete_user(client, user, token):
+    response = client.delete(
+        '/users/1',
+        headers={'Authorization': f'Bearer {token}'},
+    )
+
     assert response.status_code == HTTPStatus.OK
-    assert response.json() == {
-        'username': 'alice',
-        'email': 'alice@example.com',
-        'id': 1,
-    }
+    assert response.json() == {'msg': 'usuário deletado com sucesso'}
+
+
+def test_get_token(client, user):
+    response = client.post(
+        '/token',
+        data={'username': user.email, 'password': user.clean_password},
+    )
+    token = response.json()
+
+    assert response.status_code == HTTPStatus.OK
+    assert 'access_token' in token
+    assert 'token_type' in token
 
 
 # --------------------- exercício 2 ---------------------
@@ -117,9 +128,10 @@ def test_retornar_ola_mundo(client):
 # --------------------- exercício 3 ---------------------
 
 
-def test_update_user_nao_existente(client):
+def test_update_user_nao_existente(client, token):
     response = client.put(
         '/users/100',
+        headers={'Authorization': f'Bearer {token}'},
         json={
             'username': 'bob',
             'email': 'bob@example.com',
@@ -127,15 +139,18 @@ def test_update_user_nao_existente(client):
         },
     )
 
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'usuário não encontrado'}
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'não é possível atualizar'}
 
 
-def test_delete_user_nao_existente(client):
-    response = client.delete('/users/100')
+def test_delete_user_nao_existente(client, token):
+    response = client.delete(
+        '/users/100',
+        headers={'Authorization': f'Bearer {token}'},
+    )
 
-    assert response.status_code == HTTPStatus.NOT_FOUND
-    assert response.json() == {'detail': 'usuário não encontrado'}
+    assert response.status_code == HTTPStatus.FORBIDDEN
+    assert response.json() == {'detail': 'não é possível deletar'}
 
 
 def test_get_user_nao_existente(client):
